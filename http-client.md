@@ -41,15 +41,13 @@ To make requests, you may use the `head`, `get`, `post`, `put`, `patch`, and `de
 The `get` method returns an instance of `Illuminate\Http\Client\Response`, which provides a variety of methods that may be used to inspect the response:
 
     $response->body() : string;
-    $response->json($key = null) : array|mixed;
+    $response->json($key = null, $default = null) : array|mixed;
     $response->object() : object;
     $response->collect($key = null) : Illuminate\Support\Collection;
     $response->status() : int;
-    $response->ok() : bool;
     $response->successful() : bool;
     $response->redirect(): bool;
     $response->failed() : bool;
-    $response->serverError() : bool;
     $response->clientError() : bool;
     $response->header($header) : string;
     $response->headers() : array;
@@ -57,6 +55,39 @@ The `get` method returns an instance of `Illuminate\Http\Client\Response`, which
 The `Illuminate\Http\Client\Response` object also implements the PHP `ArrayAccess` interface, allowing you to access JSON response data directly on the response:
 
     return Http::get('http://example.com/users/1')['name'];
+
+In addition to the response methods listed above, the following methods may be used to determine if the response has a given status code:
+
+    $response->ok() : bool;                  // 200 OK
+    $response->created() : bool;             // 201 Created
+    $response->accepted() : bool;            // 202 Accepted
+    $response->noContent() : bool;           // 204 No Content
+    $response->movedPermanently() : bool;    // 301 Moved Permanently
+    $response->found() : bool;               // 302 Found
+    $response->badRequest() : bool;          // 400 Bad Request
+    $response->unauthorized() : bool;        // 401 Unauthorized
+    $response->paymentRequired() : bool;     // 402 Payment Required
+    $response->forbidden() : bool;           // 403 Forbidden
+    $response->notFound() : bool;            // 404 Not Found
+    $response->requestTimeout() : bool;      // 408 Request Timeout
+    $response->conflict() : bool;            // 409 Conflict
+    $response->unprocessableEntity() : bool; // 422 Unprocessable Entity
+    $response->tooManyRequests() : bool;     // 429 Too Many Requests
+    $response->serverError() : bool;         // 500 Internal Server Error
+
+<a name="uri-templates"></a>
+#### URI Templates
+
+The HTTP client also allows you to construct request URLs using the [URI template specification](https://www.rfc-editor.org/rfc/rfc6570). To define the URL parameters that can be expanded by your URI template, you may use the `withUrlParameters` method:
+
+```php
+Http::withUrlParameters([
+    'endpoint' => 'https://laravel.com',
+    'page' => 'docs',
+    'version' => '9.x',
+    'topic' => 'validation',
+])->get('{+endpoint}/{page}/{version}/{topic}');
+```
 
 <a name="dumping-requests"></a>
 #### Dumping Requests
@@ -177,7 +208,7 @@ You may specify the maximum number of seconds to wait while trying to connect to
 <a name="retries"></a>
 ### Retries
 
-If you would like HTTP client to automatically retry the request if a client or server error occurs, you may use the `retry` method. The `retry` method accepts the maximum number of times the request should be attempted and the number of milliseconds that Laravel should wait in between attempts:
+If you would like the HTTP client to automatically retry the request if a client or server error occurs, you may use the `retry` method. The `retry` method accepts the maximum number of times the request should be attempted and the number of milliseconds that Laravel should wait in between attempts:
 
     $response = Http::retry(3, 100)->post(/* ... */);
 
@@ -187,7 +218,7 @@ If needed, you may pass a third argument to the `retry` method. The third argume
         return $exception instanceof ConnectionException;
     })->post(/* ... */);
 
-If a request attempt fails, you may wish to make a change to the request before a new attempt is made. You can achieve this by modifying request argument provided to the callable you provided to the `retry` method. For example, you might want to retry the request with a new authorization token if the first attempt returned an authentication error:
+If a request attempt fails, you may wish to make a change to the request before a new attempt is made. You can achieve this by modifying the request argument provided to the callable you provided to the `retry` method. For example, you might want to retry the request with a new authorization token if the first attempt returned an authentication error:
 
     $response = Http::withToken($this->getToken())->retry(2, 0, function ($exception, $request) {
         if (! $exception instanceof RequestException || $exception->response->status() !== 401) {
@@ -203,7 +234,8 @@ If all of the requests fail, an instance of `Illuminate\Http\Client\RequestExcep
 
     $response = Http::retry(3, 100, throw: false)->post(/* ... */);
 
-> {note} If all of the requests fail because of a connection issue, a `Illuminate\Http\Client\ConnectionException` will still be thrown even when the `throw` argument is set to `false`.
+> **Warning**  
+> If all of the requests fail because of a connection issue, a `Illuminate\Http\Client\ConnectionException` will still be thrown even when the `throw` argument is set to `false`.
 
 <a name="error-handling"></a>
 ### Error Handling
@@ -237,9 +269,21 @@ If you have a response instance and would like to throw an instance of `Illumina
 
     // Throw an exception if an error occurred and the given condition is true...
     $response->throwIf($condition);
-    
+
+    // Throw an exception if an error occurred and the given closure resolves to true...
+    $response->throwIf(fn ($response) => true);
+
     // Throw an exception if an error occurred and the given condition is false...
     $response->throwUnless($condition);
+
+    // Throw an exception if an error occurred and the given closure resolves to false...
+    $response->throwUnless(fn ($response) => false);
+
+    // Throw an exception if the response has a specific status code...
+    $response->throwIfStatus(403);
+
+    // Throw an exception unless the response has a specific status code...
+    $response->throwUnlessStatus(200);
 
     return $response['user']['id'];
 
@@ -266,9 +310,11 @@ Since Laravel's HTTP client is powered by Guzzle, you may take advantage of [Guz
 
     $response = Http::withMiddleware(
         Middleware::mapRequest(function (RequestInterface $request) {
-            $request->withHeader('X-Example', 'Value');
+            $request = $request->withHeader('X-Example', 'Value');
+            
+            return $request;
         })
-    ->get('http://example.com');
+    )->get('http://example.com');
 
 Likewise, you can inspect the incoming HTTP response by registering a middleware via the `withMiddleware` method in combination with Guzzle's `mapResponse` middleware factory:
 
@@ -281,6 +327,8 @@ Likewise, you can inspect the incoming HTTP response by registering a middleware
             $header = $response->getHeader('X-Example');
 
             // ...
+            
+            return $response;
         })
     )->get('http://example.com');
 
@@ -407,7 +455,7 @@ Sometimes you may need to specify that a single URL should return a series of fa
                                 ->pushStatus(404),
     ]);
 
-When all of the responses in a response sequence have been consumed, any further requests will cause the response sequence to throw an exception. If you would like to specify a default response that should be returned when a sequence is empty, you may use the `whenEmpty` method:
+When all the responses in a response sequence have been consumed, any further requests will cause the response sequence to throw an exception. If you would like to specify a default response that should be returned when a sequence is empty, you may use the `whenEmpty` method:
 
     Http::fake([
         // Stub a series of responses for GitHub endpoints...
@@ -506,6 +554,45 @@ Or, you may use the `assertNothingSent` method to assert that no requests were s
     Http::fake();
 
     Http::assertNothingSent();
+
+<a name="recording-requests-and-responses"></a>
+#### Recording Requests / Responses
+
+You may use the `recorded` method to gather all requests and their corresponding responses. The `recorded` method returns a collection of arrays that contains instances of `Illuminate\Http\Client\Request` and `Illuminate\Http\Client\Response`:
+
+```php
+Http::fake([
+    'https://laravel.com' => Http::response(status: 500),
+    'https://nova.laravel.com/' => Http::response(),
+]);
+
+Http::get('https://laravel.com');
+Http::get('https://nova.laravel.com/');
+
+$recorded = Http::recorded();
+
+[$request, $response] = $recorded[0];
+```
+
+Additionally, the `recorded` method accepts a closure which will receive an instance of `Illuminate\Http\Client\Request` and `Illuminate\Http\Client\Response` and may be used to filter request / response pairs based on your expectations:
+
+```php
+use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\Response;
+
+Http::fake([
+    'https://laravel.com' => Http::response(status: 500),
+    'https://nova.laravel.com/' => Http::response(),
+]);
+
+Http::get('https://laravel.com');
+Http::get('https://nova.laravel.com/');
+
+$recorded = Http::recorded(function (Request $request, Response $response) {
+    return $request->url() !== 'https://laravel.com' &&
+           $response->successful();
+});
+```
 
 <a name="events"></a>
 ## Events

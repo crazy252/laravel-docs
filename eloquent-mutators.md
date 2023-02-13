@@ -64,7 +64,8 @@ As you can see, the original value of the column is passed to the accessor, allo
 
     $firstName = $user->first_name;
 
-> {tip} If you would like these computed values to be added to the array / JSON representations of your model, [you will need to append them](/docs/{{version}}/eloquent-serialization#appending-values-to-json).
+> **Note**  
+> If you would like these computed values to be added to the array / JSON representations of your model, [you will need to append them](/docs/{{version}}/eloquent-serialization#appending-values-to-json).
 
 <a name="building-value-objects-from-multiple-attributes"></a>
 #### Building Value Objects From Multiple Attributes
@@ -171,7 +172,7 @@ The mutator closure will receive the value that is being set on the attribute, a
 
     $user->first_name = 'Sally';
 
-In this example, the `set` callback will be called with the value `Sally`. The mutator will then apply the `strtolower` function to the name and set its resulting value in model's the internal `$attributes` array.
+In this example, the `set` callback will be called with the value `Sally`. The mutator will then apply the `strtolower` function to the name and set its resulting value in the model's internal `$attributes` array.
 
 <a name="mutating-multiple-attributes"></a>
 #### Mutating Multiple Attributes
@@ -219,7 +220,7 @@ The `$casts` property should be an array where the key is the name of the attrib
 - `datetime`
 - `immutable_date`
 - `immutable_datetime`
-- `decimal:`<code>&lt;digits&gt;</code>
+- <code>decimal:&lt;precision&gt;</code>
 - `double`
 - `encrypted`
 - `encrypted:array`
@@ -269,7 +270,8 @@ If you need to add a new, temporary cast at runtime, you may use the `mergeCasts
         'options' => 'object',
     ]);
 
-> {note} Attributes that are `null` will not be cast. In addition, you should never define a cast (or an attribute) that has the same name as a relationship.
+> **Warning**  
+> Attributes that are `null` will not be cast. In addition, you should never define a cast (or an attribute) that has the same name as a relationship.
 
 <a name="stringable-casting"></a>
 #### Stringable Casting
@@ -423,9 +425,10 @@ If a custom format is applied to the `date` or `datetime` cast, such as `datetim
 <a name="enum-casting"></a>
 ### Enum Casting
 
-> {note} Enum casting is only available for PHP 8.1+.
+> **Warning**  
+> Enum casting is only available for PHP 8.1+.
 
-Eloquent also allows you to cast your attribute values to PHP ["backed" Enums](https://www.php.net/manual/en/language.enumerations.backed.php). To accomplish this, you may specify the attribute and enum you wish to cast in your model's `$casts` property array:
+Eloquent also allows you to cast your attribute values to PHP [Enums](https://www.php.net/manual/en/language.enumerations.backed.php). To accomplish this, you may specify the attribute and enum you wish to cast in your model's `$casts` property array:
 
     use App\Enums\ServerStatus;
 
@@ -440,11 +443,28 @@ Eloquent also allows you to cast your attribute values to PHP ["backed" Enums](h
 
 Once you have defined the cast on your model, the specified attribute will be automatically cast to and from an enum when you interact with the attribute:
 
-    if ($server->status == ServerStatus::provisioned) {
-        $server->status = ServerStatus::ready;
+    if ($server->status == ServerStatus::Provisioned) {
+        $server->status = ServerStatus::Ready;
 
         $server->save();
     }
+
+<a name="casting-arrays-of-enums"></a>
+#### Casting Arrays Of Enums
+
+Sometimes you may need your model to store an array of enum values within a single column. To accomplish this, you may utilize the `AsEnumArrayObject` or `AsEnumCollection` casts provided by Laravel:
+
+    use App\Enums\ServerStatus;
+    use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'statuses' => AsEnumCollection::class.':'.ServerStatus::class,
+    ];
 
 <a name="encrypted-casting"></a>
 ### Encrypted Casting
@@ -485,9 +505,13 @@ The `last_posted_at` attribute on the results of this query will be a simple str
 <a name="custom-casts"></a>
 ## Custom Casts
 
-Laravel has a variety of built-in, helpful cast types; however, you may occasionally need to define your own cast types. You may accomplish this by defining a class that implements the `CastsAttributes` interface.
+Laravel has a variety of built-in, helpful cast types; however, you may occasionally need to define your own cast types. To create a cast, execute the `make:cast` Artisan command. The new cast class will be placed in your `app/Casts` directory:
 
-Classes that implement this interface must define a `get` and `set` method. The `get` method is responsible for transforming a raw value from the database into a cast value, while the `set` method should transform a cast value into a raw value that can be stored in the database. As an example, we will re-implement the built-in `json` cast type as a custom cast type:
+```shell
+php artisan make:cast Json
+```
+
+All custom cast classes implement the `CastsAttributes` interface. Classes that implement this interface must define a `get` and `set` method. The `get` method is responsible for transforming a raw value from the database into a cast value, while the `set` method should transform a cast value into a raw value that can be stored in the database. As an example, we will re-implement the built-in `json` cast type as a custom cast type:
 
     <?php
 
@@ -558,7 +582,7 @@ As an example, we will define a custom cast class that casts multiple model valu
 
     namespace App\Casts;
 
-    use App\Models\Address as AddressModel;
+    use App\ValueObjects\Address as AddressValueObject;
     use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
     use InvalidArgumentException;
 
@@ -571,11 +595,11 @@ As an example, we will define a custom cast class that casts multiple model valu
          * @param  string  $key
          * @param  mixed  $value
          * @param  array  $attributes
-         * @return \App\Models\Address
+         * @return \App\ValueObjects\Address
          */
         public function get($model, $key, $value, $attributes)
         {
-            return new AddressModel(
+            return new AddressValueObject(
                 $attributes['address_line_one'],
                 $attributes['address_line_two']
             );
@@ -586,13 +610,13 @@ As an example, we will define a custom cast class that casts multiple model valu
          *
          * @param  \Illuminate\Database\Eloquent\Model  $model
          * @param  string  $key
-         * @param  \App\Models\Address  $value
+         * @param  \App\ValueObjects\Address  $value
          * @param  array  $attributes
          * @return array
          */
         public function set($model, $key, $value, $attributes)
         {
-            if (! $value instanceof AddressModel) {
+            if (! $value instanceof AddressValueObject) {
                 throw new InvalidArgumentException('The given value is not an Address instance.');
             }
 
@@ -613,7 +637,8 @@ When casting to value objects, any changes made to the value object will automat
 
     $user->save();
 
-> {tip} If you plan to serialize your Eloquent models containing value objects to JSON or arrays, you should implement the `Illuminate\Contracts\Support\Arrayable` and `JsonSerializable` interfaces on the value object.
+> **Note**  
+> If you plan to serialize your Eloquent models containing value objects to JSON or arrays, you should implement the `Illuminate\Contracts\Support\Arrayable` and `JsonSerializable` interfaces on the value object.
 
 <a name="array-json-serialization"></a>
 ### Array / JSON Serialization
@@ -639,7 +664,15 @@ Therefore, you may specify that your custom cast class will be responsible for s
 <a name="inbound-casting"></a>
 ### Inbound Casting
 
-Occasionally, you may need to write a custom cast that only transforms values that are being set on the model and does not perform any operations when attributes are being retrieved from the model. A classic example of an inbound only cast is a "hashing" cast. Inbound only custom casts should implement the `CastsInboundAttributes` interface, which only requires a `set` method to be defined.
+Occasionally, you may need to write a custom cast class that only transforms values that are being set on the model and does not perform any operations when attributes are being retrieved from the model.
+
+Inbound only custom casts should implement the `CastsInboundAttributes` interface, which only requires a `set` method to be defined. The `make:cast` Artisan command may be invoked with the `--inbound` option to generate an inbound only cast class:
+
+```shell
+php artisan make:cast Hash --inbound
+```
+
+A classic example of an inbound only cast is a "hashing" cast. For example, we may define a cast that hashes inbound values via a given algorithm:
 
     <?php
 

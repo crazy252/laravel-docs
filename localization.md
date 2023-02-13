@@ -24,7 +24,7 @@ Laravel provides two ways to manage translation strings. First, language strings
         /es
             messages.php
 
-Or, translation strings may be defined within JSON files that are placed within the `lang` directory. When taking this approach, each language supported by your application would have a corresponding JSON file within this directory. This approach is recommended for application's that have a large number of translatable strings:
+Or, translation strings may be defined within JSON files that are placed within the `lang` directory. When taking this approach, each language supported by your application would have a corresponding JSON file within this directory. This approach is recommended for applications that have a large number of translatable strings:
 
     /lang
         en.json
@@ -87,7 +87,8 @@ You may instruct Laravel's "pluralizer", which is used by Eloquent and other por
         // ...     
     }
 
-> {note} If you customize the pluralizer's language, you should explicitly define your Eloquent model's [table names](/docs/{{version}}/eloquent#table-names).
+> **Warning**  
+> If you customize the pluralizer's language, you should explicitly define your Eloquent model's [table names](/docs/{{version}}/eloquent#table-names).
 
 <a name="defining-translation-strings"></a>
 ## Defining Translation Strings
@@ -113,7 +114,8 @@ All language files return an array of keyed strings. For example:
         'welcome' => 'Welcome to our application!',
     ];
 
-> {note} For languages that differ by territory, you should name the language directories according to the ISO 15897. For example, "en_GB" should be used for British English rather than "en-gb".
+> **Warning**  
+> For languages that differ by territory, you should name the language directories according to the ISO 15897. For example, "en_GB" should be used for British English rather than "en-gb".
 
 <a name="using-translation-strings-as-keys"></a>
 ### Using Translation Strings As Keys
@@ -166,6 +168,28 @@ If your placeholder contains all capital letters, or only has its first letter c
 
     'welcome' => 'Welcome, :NAME', // Welcome, DAYLE
     'goodbye' => 'Goodbye, :Name', // Goodbye, Dayle
+
+<a name="object-replacement-formatting"></a>
+#### Object Replacement Formatting
+
+If you attempt to provide an object as a translation placeholder, the object's `__toString` method will be invoked. The [`__toString`](https://www.php.net/manual/en/language.oop5.magic.php#object.tostring) method is one of PHP's built-in "magic methods". However, sometimes you may not have control over the `__toString` method of a given class, such as when the class that you are interacting with belongs to a third-party library.
+
+In these cases, Laravel allows you to register a custom formatting handler for that particular type of object. To accomplish this, you should invoke the translator's `stringable` method. The `stringable` method accepts a closure, which should type-hint the type of object that it is responsible for formatting. Typically, the `stringable` method should be invoked within the `boot` method of your application's `AppServiceProvider` class:
+
+    use Illuminate\Support\Facades\Lang;
+    use Money\Money;
+
+    /**
+     * Bootstrap any application services.
+     *
+     * @return void
+     */
+    public function boot()
+    {
+        Lang::stringable(function (Money $money) {
+            return $money->formatTo('en_GB');
+        });
+    }
 
 <a name="pluralization"></a>
 ### Pluralization

@@ -11,6 +11,7 @@
 - [Many To Many Relationships](#many-to-many)
     - [Retrieving Intermediate Table Columns](#retrieving-intermediate-table-columns)
     - [Filtering Queries Via Intermediate Table Columns](#filtering-queries-via-intermediate-table-columns)
+    - [Ordering Queries Via Intermediate Table Columns](#ordering-queries-via-intermediate-table-columns)
     - [Defining Custom Intermediate Table Models](#defining-custom-intermediate-table-models)
 - [Polymorphic Relationships](#polymorphic-relationships)
     - [One To One](#one-to-one-polymorphic-relations)
@@ -343,7 +344,8 @@ public function largestOrder()
 }
 ```
 
-> {note} Because PostgreSQL does not support executing the `MAX` function against UUID columns, it is not currently possible to use one-of-many relationships in combination with PostgreSQL UUID columns.
+> **Warning**  
+> Because PostgreSQL does not support executing the `MAX` function against UUID columns, it is not currently possible to use one-of-many relationships in combination with PostgreSQL UUID columns.
 
 <a name="advanced-has-one-of-many-relationships"></a>
 #### Advanced Has One Of Many Relationships
@@ -409,6 +411,16 @@ Now that we have examined the table structure for the relationship, let's define
 
 The first argument passed to the `hasOneThrough` method is the name of the final model we wish to access, while the second argument is the name of the intermediate model.
 
+Or, if the relevant relationships have already been defined on all of the models involved in the relationship, you may fluently define a "has-one-through" relationship by invoking the `through` method and supplying the names of those relationships. For example, if the `Mechanic` model has a `cars` relationship and the `Car` model has an `owner` relationship, you may define a "has-one-through" relationship connecting the mechanic and the owner like so:
+
+```php
+// String based syntax...
+return $this->through('cars')->has('owner');
+
+// Dynamic syntax...
+return $this->throughCars()->hasOwner();
+```
+
 <a name="has-one-through-key-conventions"></a>
 #### Key Conventions
 
@@ -431,6 +443,16 @@ Typical Eloquent foreign key conventions will be used when performing the relati
             );
         }
     }
+
+Or, as discussed earlier, if the relevant relationships have already been defined on all of the models involved in the relationship, you may fluently define a "has-one-through" relationship by invoking the `through` method and supplying the names of those relationships. This approach offers the advantage of reusing the key conventions already defined on the existing relationships:
+
+```php
+// String based syntax...
+return $this->through('cars')->has('owner');
+
+// Dynamic syntax...
+return $this->throughCars()->hasOwner();
+```
 
 <a name="has-many-through"></a>
 ### Has Many Through
@@ -472,6 +494,16 @@ Now that we have examined the table structure for the relationship, let's define
 
 The first argument passed to the `hasManyThrough` method is the name of the final model we wish to access, while the second argument is the name of the intermediate model.
 
+Or, if the relevant relationships have already been defined on all of the models involved in the relationship, you may fluently define a "has-many-through" relationship by invoking the `through` method and supplying the names of those relationships. For example, if the `Project` model has a `environments` relationship and the `Environment` model has a `deployments` relationship, you may define a "has-many-through" relationship connecting the project and the deployments like so:
+
+```php
+// String based syntax...
+return $this->through('environments')->has('deployments');
+
+// Dynamic syntax...
+return $this->throughEnvironments()->hasDeployments();
+```
+
 Though the `Deployment` model's table does not contain a `project_id` column, the `hasManyThrough` relation provides access to a project's deployments via `$project->deployments`. To retrieve these models, Eloquent inspects the `project_id` column on the intermediate `Environment` model's table. After finding the relevant environment IDs, they are used to query the `Deployment` model's table.
 
 <a name="has-many-through-key-conventions"></a>
@@ -493,6 +525,16 @@ Typical Eloquent foreign key conventions will be used when performing the relati
             );
         }
     }
+
+Or, as discussed earlier, if the relevant relationships have already been defined on all of the models involved in the relationship, you may fluently define a "has-many-through" relationship by invoking the `through` method and supplying the names of those relationships. This approach offers the advantage of reusing the key conventions already defined on the existing relationships:
+
+```php
+// String based syntax...
+return $this->through('environments')->has('deployments');
+
+// Dynamic syntax...
+return $this->throughEnvironments()->hasDeployments();
+```
 
 <a name="many-to-many"></a>
 ## Many To Many Relationships
@@ -609,7 +651,8 @@ If you would like your intermediate table to have `created_at` and `updated_at` 
 
     return $this->belongsToMany(Role::class)->withTimestamps();
 
-> {note} Intermediate tables that utilize Eloquent's automatically maintained timestamps are required to have both `created_at` and `updated_at` timestamp columns.
+> **Warning**  
+> Intermediate tables that utilize Eloquent's automatically maintained timestamps are required to have both `created_at` and `updated_at` timestamp columns.
 
 <a name="customizing-the-pivot-attribute-name"></a>
 #### Customizing The `pivot` Attribute Name
@@ -660,6 +703,15 @@ You can also filter the results returned by `belongsToMany` relationship queries
                     ->as('subscriptions')
                     ->wherePivotNotNull('expired_at');
 
+<a name="ordering-queries-via-intermediate-table-columns"></a>
+### Ordering Queries Via Intermediate Table Columns
+
+You can order the results returned by `belongsToMany` relationship queries using the `orderByPivot` method. In the following example, we will retrieve all of the latest badges for the user:
+
+    return $this->belongsToMany(Badge::class)
+                    ->where('rank', 'gold')
+                    ->orderByPivot('created_at', 'desc');
+
 <a name="defining-custom-intermediate-table-models"></a>
 ### Defining Custom Intermediate Table Models
 
@@ -697,7 +749,8 @@ When defining the `RoleUser` model, you should extend the `Illuminate\Database\E
         //
     }
 
-> {note} Pivot models may not use the `SoftDeletes` trait. If you need to soft delete pivot records consider converting your pivot model to an actual Eloquent model.
+> **Warning**  
+> Pivot models may not use the `SoftDeletes` trait. If you need to soft delete pivot records consider converting your pivot model to an actual Eloquent model.
 
 <a name="custom-pivot-models-and-incrementing-ids"></a>
 #### Custom Pivot Models And Incrementing IDs
@@ -950,7 +1003,8 @@ public function bestImage()
 }
 ```
 
-> {tip} It is possible to construct more advanced "one of many" relationships. For more information, please consult the [has one of many documentation](#advanced-has-one-of-many-relationships).
+> **Note**  
+> It is possible to construct more advanced "one of many" relationships. For more information, please consult the [has one of many documentation](#advanced-has-one-of-many-relationships).
 
 <a name="many-to-many-polymorphic-relations"></a>
 ### Many To Many (Polymorphic)
@@ -977,7 +1031,8 @@ Many-to-many polymorphic relations are slightly more complicated than "morph one
         taggable_id - integer
         taggable_type - string
 
-> {tip} Before diving into polymorphic many-to-many relationships, you may benefit from reading the documentation on typical [many-to-many relationships](#many-to-many).
+> **Note**  
+> Before diving into polymorphic many-to-many relationships, you may benefit from reading the documentation on typical [many-to-many relationships](#many-to-many).
 
 <a name="many-to-many-polymorphic-model-structure"></a>
 #### Model Structure
@@ -1086,7 +1141,8 @@ You may determine the morph alias of a given model at runtime using the model's 
 
     $class = Relation::getMorphedModel($alias);
 
-> {note} When adding a "morph map" to your existing application, every morphable `*_type` column value in your database that still contains a fully-qualified class will need to be converted to its "map" name.
+> **Warning**  
+> When adding a "morph map" to your existing application, every morphable `*_type` column value in your database that still contains a fully-qualified class will need to be converted to its "map" name.
 
 <a name="dynamic-relationships"></a>
 ### Dynamic Relationships
@@ -1102,7 +1158,8 @@ The `resolveRelationUsing` method accepts the desired relationship name as its f
         return $orderModel->belongsTo(Customer::class, 'customer_id');
     });
 
-> {note} When defining dynamic relationships, always provide explicit key name arguments to the Eloquent relationship methods.
+> **Warning**  
+> When defining dynamic relationships, always provide explicit key name arguments to the Eloquent relationship methods.
 
 <a name="querying-relations"></a>
 ## Querying Relations
@@ -1224,7 +1281,8 @@ If you need even more power, you may use the `whereHas` and `orWhereHas` methods
         $query->where('content', 'like', 'code%');
     }, '>=', 10)->get();
 
-> {note} Eloquent does not currently support querying for relationship existence across databases. The relationships must exist within the same database.
+> **Warning**  
+> Eloquent does not currently support querying for relationship existence across databases. The relationships must exist within the same database.
 
 <a name="inline-relationship-existence-queries"></a>
 #### Inline Relationship Existence Queries
@@ -1563,7 +1621,8 @@ You may not always need every column from the relationships you are retrieving. 
 
     $books = Book::with('author:id,name,book_id')->get();
 
-> {note} When using this feature, you should always include the `id` column and any relevant foreign key columns in the list of columns you wish to retrieve.
+> **Warning**  
+> When using this feature, you should always include the `id` column and any relevant foreign key columns in the list of columns you wish to retrieve.
 
 <a name="eager-loading-by-default"></a>
 #### Eager Loading By Default
@@ -1627,7 +1686,8 @@ In this example, Eloquent will only eager load posts where the post's `title` co
         $query->orderBy('created_at', 'desc');
     }])->get();
 
-> {note} The `limit` and `take` query builder methods may not be used when constraining eager loads.
+> **Warning**  
+> The `limit` and `take` query builder methods may not be used when constraining eager loads.
 
 <a name="constraining-eager-loading-of-morph-to-relationships"></a>
 #### Constraining Eager Loading Of `morphTo` Relationships
@@ -1649,6 +1709,17 @@ If you are eager loading a `morphTo` relationship, Eloquent will run multiple qu
     }])->get();
 
 In this example, Eloquent will only eager load posts that have not been hidden and videos that have a `type` value of "educational".
+
+<a name="constraining-eager-loads-with-relationship-existence"></a>
+#### Constraining Eager Loads With Relationship Existence
+
+You may sometimes find yourself needing to check for the existence of a relationship while simultaneously loading the relationship based on the same conditions. For example, you may wish to only retrieve `User` models that have child `Post` models matching a given query condition while also eager loading the matching posts. You may accomplish this using the `withWhereHas` method:
+
+    use App\Models\User;
+  
+    $users = User::withWhereHas('posts', function ($query) {
+        $query->where('featured', true);
+    })->get();
 
 <a name="lazy-eager-loading"></a>
 ### Lazy Eager Loading
@@ -1789,6 +1860,10 @@ If you would like to `save` your model and all of its associated relationships, 
 
     $post->push();
 
+The `pushQuietly` method may be used to save a model and its associated relationships without raising any events:
+
+    $post->pushQuietly();
+
 <a name="the-create-method"></a>
 ### The `create` Method
 
@@ -1813,7 +1888,8 @@ You may use the `createMany` method to create multiple related models:
 
 You may also use the `findOrNew`, `firstOrNew`, `firstOrCreate`, and `updateOrCreate` methods to [create and update models on relationships](/docs/{{version}}/eloquent#upserts).
 
-> {tip} Before using the `create` method, be sure to review the [mass assignment](/docs/{{version}}/eloquent#mass-assignment) documentation.
+> **Note**  
+> Before using the `create` method, be sure to review the [mass assignment](/docs/{{version}}/eloquent#mass-assignment) documentation.
 
 <a name="updating-belongs-to-relationships"></a>
 ### Belongs To Relationships
@@ -1897,6 +1973,13 @@ The many-to-many relationship also provides a `toggle` method which "toggles" th
 
     $user->roles()->toggle([1, 2, 3]);
 
+You may also pass additional intermediate table values with the IDs:
+
+    $user->roles()->toggle([
+        1 => ['expires' => true],
+        2 => ['expires' => true],
+    ]);
+
 <a name="updating-a-record-on-the-intermediate-table"></a>
 #### Updating A Record On The Intermediate Table
 
@@ -1939,4 +2022,5 @@ For example, when a `Comment` model is updated, you may want to automatically "t
         }
     }
 
-> {note} Parent model timestamps will only be updated if the child model is updated using Eloquent's `save` method.
+> **Warning**  
+> Parent model timestamps will only be updated if the child model is updated using Eloquent's `save` method.

@@ -25,16 +25,17 @@ The Laravel framework has a few system requirements. You should ensure that your
 <div class="content-list" markdown="1">
 
 - PHP >= 8.0
-- BCMath PHP Extension
 - Ctype PHP Extension
 - cURL PHP Extension
 - DOM PHP Extension
 - Fileinfo PHP Extension
-- JSON PHP Extension
+- Filter PHP Extension
+- Hash PHP Extension
 - Mbstring PHP Extension
 - OpenSSL PHP Extension
 - PCRE PHP Extension
 - PDO PHP Extension
+- Session PHP Extension
 - Tokenizer PHP Extension
 - XML PHP Extension
 
@@ -97,7 +98,8 @@ When deploying to production, make sure that you are optimizing Composer's class
 composer install --optimize-autoloader --no-dev
 ```
 
-> {tip} In addition to optimizing the autoloader, you should always be sure to include a `composer.lock` file in your project's source control repository. Your project's dependencies can be installed much faster when a `composer.lock` file is present.
+> **Note**  
+> In addition to optimizing the autoloader, you should always be sure to include a `composer.lock` file in your project's source control repository. Your project's dependencies can be installed much faster when a `composer.lock` file is present.
 
 <a name="optimizing-configuration-loading"></a>
 ### Optimizing Configuration Loading
@@ -110,7 +112,8 @@ php artisan config:cache
 
 This command will combine all of Laravel's configuration files into a single, cached file, which greatly reduces the number of trips the framework must make to the filesystem when loading your configuration values.
 
-> {note} If you execute the `config:cache` command during your deployment process, you should be sure that you are only calling the `env` function from within your configuration files. Once the configuration has been cached, the `.env` file will not be loaded and all calls to the `env` function for `.env` variables will return `null`.
+> **Warning**  
+> If you execute the `config:cache` command during your deployment process, you should be sure that you are only calling the `env` function from within your configuration files. Once the configuration has been cached, the `.env` file will not be loaded and all calls to the `env` function for `.env` variables will return `null`.
 
 <a name="optimizing-route-loading"></a>
 ### Optimizing Route Loading
@@ -150,6 +153,9 @@ The debug option in your config/app.php configuration file determines how much i
 If you aren't quite ready to manage your own server configuration or aren't comfortable configuring all of the various services needed to run a robust Laravel application, [Laravel Forge](https://forge.laravel.com) is a wonderful alternative.
 
 Laravel Forge can create servers on various infrastructure providers such as DigitalOcean, Linode, AWS, and more. In addition, Forge installs and manages all of the tools needed to build robust Laravel applications, such as Nginx, MySQL, Redis, Memcached, Beanstalk, and more.
+
+> **Note**
+> Want a full guide to deploying with Laravel Forge? Check out the [Laravel Bootcamp](https://bootcamp.laravel.com/deploying) and the Forge [video series available on Laracasts](https://laracasts.com/series/learn-laravel-forge-2022-edition).
 
 <a name="laravel-vapor"></a>
 #### Laravel Vapor
